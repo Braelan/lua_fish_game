@@ -24,17 +24,17 @@ end
 
 --Handles missiles
 cannonImg= love.graphics.newImage("cannon.png")
-
+octopusArmImg = love.graphics.newImage("octopusArm.png")
 timerMax = .2
 timer = 0
 diverCannon = {}
-
+octopusArms = {}
 -- ie if space bar down fire() in update
-function fire(player,missileArray,missileImg, dir)
+function fire(player,missileArray,missileImg, trajectory)
   missileImg = missileImg or cannonImg
-  dir = dir or 1
+  trajectory = trajectory or {x=200, y =0}
   if player.count < 0 then
-  newMiss = {x =(player.x+ player.img:getWidth()/2), y = (player.y+ player.img:getHeight()/3 + 5), img = missileImg, speed = 200}
+  newMiss = {x =(player.x+ player.img:getWidth()/2), y = (player.y+ player.img:getHeight()/3 + 5), img = missileImg, speed = trajectory.x, speedy = trajectory.y}
   table.insert(missileArray, newMiss)
   player.count = timerMax
   end
@@ -44,6 +44,7 @@ end
   function moveMissile(missileArray, dt) 
     for i, missile in ipairs(missileArray) do 
       missile.x = (missile.x +missile.speed*dt)
+      missile.y = (missile.y +missile.speedy*dt)
       if missile.x > 800 or missile.x < 0 or missile.y < 0 or missile.y > 600 then
          table.remove(missileArray, i)
       end
@@ -61,20 +62,23 @@ end
 --map
 
 location = {x = 1, y =2}
- map = {1,0,0,1,0,1,0,1,0,0,1}
+ map = {{3,{}},{4,{}},{2,{}},{1,{}},{0,{}},{1,{}},{1,{}},{0,{}}}
 -- load tiles
 tile = {}
 tile[0] = love.graphics.newImage("flower.png")
-tile[1] = love.graphics.newImage("flower2.png")
+tile[1] = love.graphics.newImage("forrest.jpg")
+tile[2] = love.graphics.newImage("sunset.jpeg")
+tile[3] = love.graphics.newImage("nightsky.jpg")
+tile[4] = love.graphics.newImage("undersea.jpg")
 
 --readmap
 function readmap(coords)
  x = coords.x
-for i=x, (x+1) do 
-love.graphics.draw(tile[map[i]], 300*(i-x),300)
+for i=x, (x) do 
+love.graphics.draw(tile[map[i][1]], 800*(i-x),0)
 end 
  end
-
+--ANIMATION
 --set animation rate
 function rate(player,first, second)
      if diver.frame % first ==0 then
@@ -84,18 +88,39 @@ function rate(player,first, second)
   end
 end
 
+--random movement for objects
+  function randomMove(obj, dt)
+  x = obj.x + math.random(-10,10)*obj.speed*dt
+  if x < 800 and x > 0 then
+    obj.x = x
+  end
+  y = obj.y + math.random(-10,10)*obj.speed*dt
+  if y < 600 and y > 0 then
+    obj.y = y
+  end
+end 
 
---set the screen
+
+--feed this function map[location.x][2]
+function animate(map)
+for i,enemy in ipairs(map) do 
+    if enemy.movement == "random" then
+       randomMove(enemy)
+  end
+
+end
+end
+
 function love.conf(t)
   t.title = "Sweet fish game"  
   t.version = "0.9.1"
 end
 -- players and objects
+--anything that fires an object must have a count that updates (if count is less than 0, ok to fire)
 
-
-fish = { x = 200, y = 210, speed = 150, img = nil, frame = 1}
-octopus = {x = 400, y = 0, speed = 100, img = nil, frame = 0, damage =0, alive = 1, hitarea ={ xx = 400 , yy = 0, width = 100, height= 100}, timer = 0 } 
-diver = {x = 200, y = 300, speed = 150, img = nil, frame = 1, count = 0, temp = 200 }
+fish = { x = 200, y = 210, speed = 150, img = nil, frame = 1, damage = 0}
+octopus = {x = 400, y = 0, speed = 100, img = nil, frame = 0, damage =0, alive = 1, hitarea ={ xx = 400 , yy = 0, width = 100, height= 100}, timer = 0, count = -1 } 
+diver = {x = 200, y = 300, speed = 150, img = nil, frame = 1, count = 0, temp = 200, damage = 0 }
 
     function love.load()
 --background
@@ -116,6 +141,9 @@ docto = love.graphics.newImage("octopus4.png")
 eocto = love.graphics.newImage("octopus5.png")
 focto = love.graphics.newImage("octopus6.png")
     octopus.img = firstocto
+    octopus.hitarea.width = octopus.img:getWidth()/2
+    octopus.hitarea.height = octopus.img:getWidth()/2
+--full screen
     success = love.graphics.toggleFullscreen()
 
 --diver
@@ -137,6 +165,8 @@ function love.update(dt)
   if love.keyboard.isDown('escape') then 
      love.event.push('quit')
   end
+
+
 --fish controls
   if love.keyboard.isDown('left') then
      if fish.x > 0 then 
@@ -186,14 +216,15 @@ function love.update(dt)
 
 -- move missiles
   moveMissile(diverCannon, dt)
+  moveMissile(octopusArms, dt)
 --octopus position
-  if octopus.y < (love.graphics.getHeight() - fish.img:getHeight()) then
-     octopus.y = octopus.y+ (octopus.speed*dt)
-  else octopus.y  = 0
+  if (octopus.frame % 3 == 0) then
+  randomMove(octopus, dt)
   end
+  octopus.frame = octopus.frame + 1
 --update hitarea
-  octopus.hitarea.xx = octopus.x + 100
-  octopus. hitarea.yy =octopus.y
+  octopus.hitarea.xx = octopus.x + octopus.hitarea.width/2
+  octopus.hitarea.yy =octopus.y
 --octopus timer
   if octopus.alive == 0 then
      octopus.timer = octopus.timer + (1*dt)
@@ -250,9 +281,26 @@ function love.update(dt)
        table.remove(diverCannon,i)
      end
   end 
+--octopusArms attack fish and diver
+  for i, arm in ipairs(octopusArms) do 
+     if collisionImp(arm, diver) then 
+        diver.damage = diver.damage + 1
+        table.remove(octopusArms,i)
+     end
+     if collisionImp(arm, fish) then
+        fish.damage = fish.damage + 1
+        table.remove(octopusArms, i)
+     end
+   end
+ 
+
+
+--octopus
+
+
 
 --octopus status
-
+  temp = octopus.img
   if octopus.damage == 20 then
      octopus.img = aocto
   elseif octopus.damage == 40 then
@@ -270,16 +318,45 @@ function love.update(dt)
   elseif octopus.damage > 160 then
     octopus.alive = 0
   end
+--lose an arm
+  if temp == octopus.img then
+    u = 1
+  else
+   
+a =math.random(-200,200)
+ b = math.random(-200,200) 
+   trajectory = {x=a, y = b}
+   fire(octopus, octopusArms, octopusArmImg, trajectory)
+   octopus.count = -1
+  end
+
+--
+
 
 --move along
 ---]]
 
   if fish.x > 650 then
-     fish.x = 0
+     fish.x = 10
      location.x = location.x +1
+  end
+
+--and move backwards
+
+  if fish.x < 10 then
+     fish.x = 640
+     location.x = location.x -1
   end
 --]]
 end
+-- Story
+ 
+ file = io.open("game/story.txt", "r")
+  io.input(file)
+  t = io.read()
+  io.close(file)
+--]]
+
 
    function love.draw()
   --background
@@ -294,7 +371,8 @@ end
     readmap(location)
 
   --draw missiles
-    showMissile(diverCannon)    
+    showMissile(diverCannon)  
+    showMissile(octopusArms)  
 
      love.graphics.draw(fish.img, fish.x, fish.y)
     if octopus.alive == 1  and location.x == 1 then  love.graphics.draw(octopus.img, octopus.x, octopus.y) end
@@ -304,9 +382,17 @@ end
     height = love.graphics.getHeight() 
    love.graphics.print(""..(location.y*100).." feet", 0,0)
   love.graphics.print(height, 100,200) 
+  if diver.damage > 0 then love.graphics.print("diver dead", 20,20) end
+
+   --print out story
+    if octopus.alive == 0 and location.x == 1 then 
+    love.graphics.print(t, 0,40)
+    end
+
+
+
 
 
 
  end
---]]
 
