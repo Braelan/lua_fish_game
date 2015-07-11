@@ -60,9 +60,14 @@ function showMissile(missileArray)
 end
 
 --map
+testobja = {x = 10, y = 10, speed = 50, img = cannonImg, movement = "zombie"}
+testobjb= {x = 600, y = 500, speed = 50, img = cannonImg, movement = "zombie"}
+testobjc = {x = 10, y = 10, speed = 50, img = cannonImg, movement = "random"}
+testobjd = {x = 800, y = 300, speed = 157, img = cannonImg, movement = "sine", frame = 0}
 
-location = {x = 1, y =2}
- map = {{3,{}},{4,{}},{2,{}},{1,{}},{0,{}},{1,{}},{1,{}},{0,{}}}
+
+location = {x = 1, y =2, scroll= 800}
+ map = {{3,{nil}},{4,{testobja, testobjb, testobjc, testobjd}},{2,{nil}},{1,{nil}},{0,{nil}},{1,{nil}},{1,{nil}},{0,{nil}}}
 -- load tiles
 tile = {}
 tile[0] = love.graphics.newImage("flower.png")
@@ -76,6 +81,7 @@ function readmap(coords)
  x = coords.x
 for i=x, (x) do 
 love.graphics.draw(tile[map[i][1]], 800*(i-x),0)
+
 end 
  end
 --ANIMATION
@@ -101,15 +107,55 @@ end
 end 
 
 
+--move an enemy towards the player
+function zombieMove(enemy, player, dt)
+ if player.x - enemy.x <= 0 then
+    enemy.x = enemy.x - enemy.speed*dt
+ elseif player.x - enemy.x > 0 then
+    enemy.x = enemy.x + enemy.speed*dt
+  end
+ 
+ if player.y - enemy.y <= 0 then
+    enemy.y = enemy.y - enemy.speed*dt
+ elseif player.y - enemy.y > 0 then
+    enemy.y = enemy.y + enemy.speed*dt
+ end
+end
+
+function sinMove(enemy, dt)
+if enemy.frame % 20 == 0 then
+  if enemy.x > 0  then
+     enemy.x = enemy.x -enemy.speed*dt
+     enemy.y = 300 + (math.sin(enemy.x)*dt)*2500
+  else enemy.x = 800
+  end
+end
+     enemy.frame = enemy.frame + 1
+end
+ 
+
+
+
 --feed this function map[location.x][2]
-function animate(map)
+function animate(map, player,dt)
 for i,enemy in ipairs(map) do 
     if enemy.movement == "random" then
-       randomMove(enemy)
+       randomMove(enemy,dt)
+    end
+    if enemy.movement == "zombie" then
+       zombieMove(enemy,player,dt)
   end
+    if enemy.movement == "sine" then
+       sinMove(enemy,dt)
+     end
 
 end
 end
+
+--load map with bad guys
+
+
+
 
 function love.conf(t)
   t.title = "Sweet fish game"  
@@ -348,6 +394,14 @@ a =math.random(-200,200)
      location.x = location.x -1
   end
 --]]
+-- animate arrays of bad guys
+   if map[location.x][2] == {nil} then
+      u = 0
+   else animate(map[location.x][2], diver, dt)
+   end
+
+
+
 end
 -- Story
  
@@ -373,6 +427,9 @@ end
   --draw missiles
     showMissile(diverCannon)  
     showMissile(octopusArms)  
+    showMissile(map[location.x][2])
+    
+
 
      love.graphics.draw(fish.img, fish.x, fish.y)
     if octopus.alive == 1  and location.x == 1 then  love.graphics.draw(octopus.img, octopus.x, octopus.y) end
@@ -395,4 +452,3 @@ end
 
 
  end
-
